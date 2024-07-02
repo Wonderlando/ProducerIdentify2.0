@@ -62,8 +62,8 @@ def CRNN2D(X_shape, nb_classes):
     model.add(Reshape((model.output_shape[1], resize_shape)))
 
     # recurrent layer
-    model.add(LSTM(32, return_sequences=True))
-    model.add(LSTM(32, return_sequences=False))
+    model.add(GRU(32, return_sequences=True))
+    model.add(GRU(32, return_sequences=False))
     model.add(Dropout(0.3))
 
     # Output layer

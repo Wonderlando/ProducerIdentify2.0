@@ -15,7 +15,7 @@ from dataclasses import dataclass, asdict
 class StreamParams:
     format: int = pyaudio.paInt16
     channels: int = 1
-    rate: int = 44100
+    rate: int = 16000 # 44100 before changing
     frames_per_buffer: int = 1024
     input: bool = True
     output: bool = False
@@ -99,14 +99,14 @@ class Recorder:
 
 if __name__ == "__main__":
 
-    producer_name = 'max_martin'
+    producer_name = 'pharrell'
     music_folder = 'music'
     songs_in_album = 300
 
     song_length_tolerance = 45
 
     record_songs = True
-    fix_songs = True
+    fix_songs = False
     
     producer_directory = f'./{music_folder}/{producer_name}'
 

@@ -9,10 +9,7 @@ import numpy as np
 from numpy.random import RandomState
 import matplotlib.pyplot as plt
 
-import librosa
-import librosa.display
-from pydub import AudioSegment
-
+import tensorflow as tf
 import tensorflow.keras as keras
 
 from sklearn.model_selection import train_test_split
@@ -47,7 +44,8 @@ def load_dataset(song_folder_name='dataset', producer_folder='music'):
 
     return artist, spectrogram
 
-def load_dataset_song_split(song_folder_name='dataset',
+def load_dataset_song_split(random_state:int = 42,
+                            song_folder_name='dataset',
                             producer_folder='music',
                             test_split_size=0.2):
     """Splits the dataset into testing and training subsets."""
@@ -56,7 +54,8 @@ def load_dataset_song_split(song_folder_name='dataset',
                            producer_folder=producer_folder)
     # train and test split
     X_train, X_test, Y_train, Y_test = train_test_split(
-        spectrogram, artist, test_size=test_split_size, stratify=artist)
+        spectrogram, artist, test_size=test_split_size, stratify=artist,
+        random_state = random_state)
 
     return Y_train, X_train, \
            Y_test, X_test
@@ -80,7 +79,7 @@ def slice_songs(X, Y, slice_length=911):
 def encode_labels(Y,label_encoder=None, save_le = False):
     """Encodes target variables into numbers and then one hot encodings
 
-    Can also save the label encoder as a pickle object for future use
+    Can also save the label encoder as a pickle object for future use by setting save_le to True. 
     
     """
 
@@ -104,11 +103,43 @@ def encode_labels(Y,label_encoder=None, save_le = False):
     # return encoders to re-use on other data
     return Y_enc, label_encoder
 
-def plot_confusion_matrix(model, x_test, y_test):
-    #Predict
+def plot_confusion_matrix(model, x_test, y_test, le = None):
+    '''Creates confusion matrix from test set. Provide label encoder to get human-readable labels.'''
+
+    # Predict
     y_prediction = model.predict(x_test)
     y_prediction = np.argmax (y_prediction, axis = 1)
     y_test=np.argmax(y_test, axis=1)
     #Create confusion matrix and normalizes it over predicted (columns)
-    result = confusion_matrix(y_test, y_prediction , normalize='pred')
-    print(result)
+    cm = confusion_matrix(y_test, y_prediction , normalize='pred')
+
+    # Plot confusion matrix
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.imshow(cm, interpolation='nearest', cmap='Blues')
+    ax.figure.colorbar(im, ax=ax)
+
+    # get class names from label encoder
+    class_names = le.classes_
+
+    # We want to show all ticks and label them with the respective list entries
+    ax.set(xticks=np.arange(cm.shape[1]),
+        yticks=np.arange(cm.shape[0]),
+        xticklabels=class_names, yticklabels=class_names,
+        title='Confusion Matrix',
+        ylabel='True label',
+        xlabel='Predicted label')
+
+    # Rotate the tick labels and set their alignment
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+            rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations
+    # fmt = 'd'
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, format(cm[i, j]),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black")
+    fig.tight_layout()
+    plt.show()
