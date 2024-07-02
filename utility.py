@@ -135,10 +135,11 @@ def plot_confusion_matrix(model, x_test, y_test, le = None):
 
     # Loop over data dimensions and create text annotations
     # fmt = 'd'
+    print(type(cm[1,1]))
     thresh = cm.max() / 2.
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
-            ax.text(j, i, format(cm[i, j]),
+            ax.text(j, i, format(np.round(cm[i, j], 3)),
                     ha="center", va="center",
                     color="white" if cm[i, j] > thresh else "black")
     fig.tight_layout()
