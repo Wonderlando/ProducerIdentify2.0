@@ -55,17 +55,19 @@ def train_model(train:bool = True, load_checkpoint:bool = False,
     tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq = 1)
 
     checkpoint_callback = ModelCheckpoint(
-    filepath = os.path.join(save_model_folder, 'checkpoints', f'{str(slice_length)}.weights.h5'),
+    filepath = os.path.join(save_model_folder, 'checkpoints', f'{model_name}.weights.h5'),
     monitor='val_loss',
     save_best_only=True,
     save_weights_only=True,
     mode='min',
     verbose=1
-)
+    )
+
+    early_stopping_callback = EarlyStopping(patience = 2)
 
     if load_checkpoint:
         # load checkpoint if it exists
-        checkpoint_path = os.path.join(save_model_folder, 'checkpoints', f'{str(slice_length)}.weights.h5')
+        checkpoint_path = os.path.join(save_model_folder, 'checkpoints', f'{model_name}.weights.h5')
         if os.path.exists(checkpoint_path):
             model.load_weights(checkpoint_path)
             print(f"Loaded checkpoint from {checkpoint_path}")
@@ -77,7 +79,7 @@ def train_model(train:bool = True, load_checkpoint:bool = False,
         history = model.fit(X_train, Y_train, batch_size=batch_size,
                             shuffle=True, epochs=nb_epochs,
                             verbose=1, validation_split=0.2,
-                            callbacks=[tensorboard_callback, checkpoint_callback]
+                            callbacks=[tensorboard_callback, checkpoint_callback, early_stopping_callback]
                         )
         
     if save_model:
