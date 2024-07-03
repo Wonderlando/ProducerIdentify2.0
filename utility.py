@@ -1,8 +1,5 @@
 import os
 import dill
-import random
-import itertools
-import logging
 import pickle
 
 import numpy as np
@@ -144,3 +141,42 @@ def plot_confusion_matrix(model, x_test, y_test, le = None):
                     color="white" if cm[i, j] > thresh else "black")
     fig.tight_layout()
     plt.show()
+
+def analyze_misclassificaitons(x_test, y_pred, y_test, le):
+    '''Allows user to visualize misclassifications of model'''
+    y_pred_classes = np.argmax(y_pred, axis=1)
+    y_true_classes = np.argmax(y_test, axis=1)
+
+    misclassified_indices = np.where(y_pred_classes != y_true_classes)[0]
+
+    nrows = misclassified_indices.shape[0]
+    ncols = 1
+    plt.figure(figsize=(nrows, ncols))
+    for i in range(misclassified_indices.shape[0]):
+        plt.subplot(nrows,ncols, i+1)
+        plt.imshow(x_test[misclassified_indices[i]].squeeze(), cmap='viridis')
+        true_label = le.classes_[y_true_classes[misclassified_indices[i]]]
+        pred_label = le.classes_[y_pred_classes[misclassified_indices[i]]]
+        plt.title(f'sample index: {misclassified_indices[i]}, true label: {true_label}, Predicted label: {pred_label}')
+    
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == '__main__':
+    _, _, y_test, x_test = load_dataset_song_split()
+    x_test, y_test = slice_songs(x_test, y_test)
+
+    y_test, le = encode_labels(y_test, save_le=True)
+                                       
+    # Reshape data as 2d convolutional tensor shape
+    x_test = x_test.reshape(x_test.shape + (1,))
+    x_test = x_test[:10]
+    y_test = y_test[:10]
+
+    print(x_test)
+    print(y_test)
+
+    print('Input Data Shape:', x_test.shape)
+
+    model = keras.models.load_model('trained_models/results/2_Jul_24_miniset/model.keras')
+    analyze_misclassificaitons(x_test=x_test, y_pred=model(x_test), y_test=y_test, le=le)

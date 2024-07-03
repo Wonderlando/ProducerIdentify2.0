@@ -99,15 +99,15 @@ class Recorder:
 
 if __name__ == "__main__":
 
-    producer_name = 'pharrell'
+    record_songs = True
+    fix_songs = False
+
+    producer_name = 'daft_punk'
     music_folder = 'music'
     songs_in_album = 300
 
     song_length_tolerance = 45
 
-    record_songs = True
-    fix_songs = False
-    
     producer_directory = f'./{music_folder}/{producer_name}'
 
     if record_songs:
