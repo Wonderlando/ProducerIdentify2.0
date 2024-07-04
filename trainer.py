@@ -9,7 +9,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoa
 from tensorflow.keras.optimizers import Adam
 
 def train_model(load_checkpoint:bool = False, train = True,
-                save_le:bool = False, save_model:bool = False, save_training_history:bool = True, save_eval_metrics:bool =True,
+                save_le:bool = False, save_model:bool = True, save_training_history:bool = True, save_eval_metrics:bool =True,
                 slice_length:int = 911, lr:float = 0.001, nb_epochs:int = 5, batch_size:int = 32, random_seed:int = 42,
                 model_name = 'untitled'):
     
@@ -29,11 +29,11 @@ def train_model(load_checkpoint:bool = False, train = True,
                            datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
     ### loading dataset
-    Y_train, X_train, Y_test, X_test = utility.load_dataset_song_split(random_state=random_seed) # using default settings for now
+    X_train, X_test, Y_train, Y_test, S_train, S_test = utility.load_dataset_song_split(random_state=random_seed) # using default settings for now
     
     # slice songs according to slice length set above
-    X_train, Y_train = utility.slice_songs(X_train, Y_train, slice_length = slice_length)
-    X_test, Y_test = utility.slice_songs(X_test, Y_test, slice_length = slice_length)
+    X_train, Y_train, S_train = utility.slice_songs(X_train, Y_train, S_train, slice_length = slice_length)
+    X_test, Y_test, S_test = utility.slice_songs(X_test, Y_test, S_test, slice_length = slice_length)
 
     print("Training set label counts:", np.unique(Y_train, return_counts=True))
 

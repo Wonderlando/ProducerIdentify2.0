@@ -1,6 +1,9 @@
 import os
 import dill
 import pickle
+import librosa
+import logging
+from pydub import AudioSegment
 
 import numpy as np
 from numpy.random import RandomState
@@ -30,6 +33,7 @@ def load_dataset(song_folder_name='dataset', producer_folder='music'):
     # Create empty lists
     artist = []
     spectrogram = []
+    song_name = [] # ADD FUNC
 
     # Load each song into memory if the artist is included in list and return
     for song in song_list:
@@ -38,8 +42,9 @@ def load_dataset(song_folder_name='dataset', producer_folder='music'):
         if loaded_song[0] in artists:
             artist.append(loaded_song[0])
             spectrogram.append(loaded_song[1])
+            song_name.append(loaded_song[2])
 
-    return artist, spectrogram
+    return artist, spectrogram, song_name
 
 def load_dataset_song_split(random_state:int = 42,
                             song_folder_name='dataset',
@@ -47,22 +52,24 @@ def load_dataset_song_split(random_state:int = 42,
                             test_split_size=0.2):
     """Splits the dataset into testing and training subsets."""
 
-    artist, spectrogram = load_dataset(song_folder_name=song_folder_name,
+    artist, spectrogram, song_name = load_dataset(song_folder_name=song_folder_name,
                            producer_folder=producer_folder)
     # train and test split
-    X_train, X_test, Y_train, Y_test = train_test_split(
-        spectrogram, artist, test_size=test_split_size, stratify=artist,
+    X_train, X_test, Y_train, Y_test, S_train, S_test = train_test_split(
+        spectrogram, artist, song_name, test_size=test_split_size, stratify=artist,
         random_state = random_state)
+    
+    return X_train, X_test, \
+            Y_train, Y_test, \
+            S_train, S_test
 
-    return Y_train, X_train, \
-           Y_test, X_test
-
-def slice_songs(X, Y, slice_length=911):
+def slice_songs(X, Y, S, slice_length=911):
     """Slices the spectrogram into sub-spectrograms according to length"""
 
     # Create empty lists for train and test sets
     artist = []
     spectrogram = []
+    song_name = []
 
     # Slice up songs using the length specified
     for i, song in enumerate(X):
@@ -70,8 +77,9 @@ def slice_songs(X, Y, slice_length=911):
         for j in range(slices - 1):
             spectrogram.append(song[:, slice_length * j:slice_length * (j + 1)]) # select all rows and length to slice length
             artist.append(Y[i])
+            song_name.append(S[i])
 
-    return np.array(spectrogram), np.array(artist) # keras expects numpy arrays
+    return np.array(spectrogram), np.array(artist), np.array(song_name) # keras expects numpy arrays
 
 def encode_labels(Y,label_encoder=None, save_le = False):
     """Encodes target variables into numbers and then one hot encodings
@@ -104,6 +112,7 @@ def plot_confusion_matrix(model, x_test, y_test, le = None):
     '''Creates confusion matrix from test set. Provide label encoder to get human-readable labels.'''
 
     # Predict
+    print(y_test.shape)
     y_prediction = model.predict(x_test)
     y_prediction = np.argmax (y_prediction, axis = 1)
     y_test=np.argmax(y_test, axis=1)
@@ -142,41 +151,116 @@ def plot_confusion_matrix(model, x_test, y_test, le = None):
     fig.tight_layout()
     plt.show()
 
-def analyze_misclassificaitons(x_test, y_pred, y_test, le):
+def analyze_misclassificaitons(x_test, y_pred, y_test, s_test, le):
     '''Allows user to visualize misclassifications of model'''
     y_pred_classes = np.argmax(y_pred, axis=1)
     y_true_classes = np.argmax(y_test, axis=1)
 
     misclassified_indices = np.where(y_pred_classes != y_true_classes)[0]
+    print(misclassified_indices)
 
     nrows = misclassified_indices.shape[0]
     ncols = 1
     plt.figure(figsize=(nrows, ncols))
+
     for i in range(misclassified_indices.shape[0]):
         plt.subplot(nrows,ncols, i+1)
         plt.imshow(x_test[misclassified_indices[i]].squeeze(), cmap='viridis')
+        song_name = s_test[misclassified_indices[i]]
         true_label = le.classes_[y_true_classes[misclassified_indices[i]]]
         pred_label = le.classes_[y_pred_classes[misclassified_indices[i]]]
-        plt.title(f'sample index: {misclassified_indices[i]}, true label: {true_label}, Predicted label: {pred_label}')
+        plt.title(f'song name: {song_name}, true label: {true_label}, Predicted label: {pred_label}')
     
     plt.tight_layout()
     plt.show()
 
+def predict_artist(song_path, model_path, label_encoder):
+
+    sr=16000
+    n_mels=128
+    n_fft=2048
+    hop_length=512
+
+    slice_length = 911
+
+    ### Create mel spectrogram and convert it to the log scale
+    ## load song
+    print('Loading song...')
+    try:
+        y, sr = librosa.load(song_path, sr=sr)
+    except Exception as e:
+        logging.error(f"Librosa error processing {song_path}: {e}")
+        # Fallback: Use pydub to decode the MP3 file
+        try:
+            audio = AudioSegment.from_file(song_path)
+            y = np.array(audio.get_array_of_samples())
+            sr = audio.frame_rate
+        except Exception as e:
+            logging.error(f"Pydub error processing {song_path}: {e}")
+
+    ## create mel spec
+    print('Creating mel-spectrogram...')
+    try:
+        print(len(y))
+        S = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels,
+                                            n_fft=n_fft,
+                                            hop_length=hop_length)
+        data = librosa.power_to_db(S, ref=1.0)
+        print(data.shape)
+    except Exception as e:
+        RuntimeError(f"Error processing {song_path}: {e}")
+
+    ## slice song
+    print('Slicing spectrograms...')
+    spectrograms = [] # stores spectrograms
+    num_slices = int(data.shape[1] / slice_length) # number of slices required
+
+    for j in range(num_slices):
+        spectrograms.append(data[:, slice_length * j:slice_length * (j + 1)])
+    spectrograms = np.array(spectrograms) # convert to numpy array to add channel dimension
+    print(spectrograms.shape)
+    spectrograms = spectrograms.reshape(spectrograms.shape + (1,)) # add channel dimension
+    print('Input shape:', spectrograms.shape)
+
+    ### Call model
+    print('Loading model...')
+    model = keras.models.load_model(model_path)
+    results = model.predict(spectrograms)
+
+    # create dictionary of results
+    final_results = {artist:percent for artist, percent in zip(label_encoder.classes_, results[-1])} # last result is all we care about
+    print(final_results)
+
+    # visualize results
+    fig, ax = plt.subplots()
+    print(label_encoder.classes_)
+    ax.pie(results[-1], labels = label_encoder.classes_, autopct='%1.1f%%') # again, last result is all we care about
+
+    plt.show()
+
 if __name__ == '__main__':
-    _, _, y_test, x_test = load_dataset_song_split()
-    x_test, y_test = slice_songs(x_test, y_test)
 
+    _, x_test, _, y_test, _, s_test = load_dataset_song_split()
+    x_test, y_test, s_test = slice_songs(x_test, y_test, s_test)
+
+    x_test.reshape(x_test.shape + (1,))
     y_test, le = encode_labels(y_test, save_le=True)
-                                       
-    # Reshape data as 2d convolutional tensor shape
-    x_test = x_test.reshape(x_test.shape + (1,))
-    x_test = x_test[:10]
-    y_test = y_test[:10]
 
-    print(x_test)
-    print(y_test)
+    model = keras.models.load_model('trained_models/results/3_Jul_24/model.keras')
 
-    print('Input Data Shape:', x_test.shape)
+    # with open('label_encoder.pkl', 'rb') as pkl_le:
+    #     le = pickle.load(pkl_le)
 
-    model = keras.models.load_model('trained_models/results/2_Jul_24_miniset/model.keras')
-    analyze_misclassificaitons(x_test=x_test, y_pred=model(x_test), y_test=y_test, le=le)
+    predict_artist('test_songs/quincy_jones/0.wav', 'trained_models/results/3_Jul_24/model.keras', le)
+
+    # plot_confusion_matrix(model = model, x_test=x_test, y_test=y_test, le=le)
+    # x_test = x_test[:100]
+    # y_test = y_test[:100]
+    # s_test = s_test[:100]
+
+    # print(x_test)
+    # print(y_test)
+
+    # print('Input Data Shape:', x_test.shape)
+
+    # analyze_misclassificaitons(x_test=x_test, y_pred=model(x_test), y_test=y_test, s_test=s_test, le=le)
