@@ -10,6 +10,8 @@ from tensorflow.keras.layers import Dense, Dropout, Activation, Reshape, Permute
 from tensorflow.keras.layers import Conv1D, Conv2D, MaxPooling1D, MaxPooling2D
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.layers import GRU, LSTM
+from tensorflow.keras.layers import RandomTranslation
+from layers import RandomTimeMasking, RandomFrequencyMasking
 
 def CRNN2D(X_shape, nb_classes):
     '''
@@ -30,8 +32,25 @@ def CRNN2D(X_shape, nb_classes):
     time_axis = 2
     channel_axis = 3
 
+    #Data Augmentation Variables for LB Policy
+    W = 80
+    F = 27
+    mF = 1
+    T = 100
+    p = 1
+    mT = 1
+    num_time_channels = 911
+    num_freq_channels = 128
+    
+
     # Create sequential model and normalize along frequency axis
     model = Sequential()
+
+    # Add data augmentation
+    model.add(RandomTranslation((0,0),((0.0878),(0.9122)), fill_mode='wrap', input_shape=input_shape))
+    model.add(RandomFrequencyMasking(F, num_freq_channels, input_shape=input_shape))
+    model.add(RandomTimeMasking(T, num_time_channels, input_shape=input_shape))
+
     model.add(BatchNormalization(axis=frequency_axis, input_shape=input_shape))
 
     # First convolution layer specifies shape
