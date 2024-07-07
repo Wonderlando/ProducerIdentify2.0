@@ -48,8 +48,8 @@ def CRNN2D(X_shape, nb_classes):
 
     # Add data augmentation
     model.add(RandomTranslation((0,0),((0.0878),(0.9122)), fill_mode='wrap', input_shape=input_shape))
-    model.add(RandomFrequencyMasking(F, num_freq_channels, input_shape=input_shape))
-    model.add(RandomTimeMasking(T, num_time_channels, input_shape=input_shape))
+    model.add(RandomFrequencyMasking(F, num_freq_channels))
+    model.add(RandomTimeMasking(T, num_time_channels))
 
     model.add(BatchNormalization(axis=frequency_axis, input_shape=input_shape))
 
