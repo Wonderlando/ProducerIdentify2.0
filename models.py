@@ -6,14 +6,14 @@ Updated on Nov 14 2017
 """
 
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Activation, Reshape, Permute
+from tensorflow.keras.layers import Input, Dense, Dropout, Activation, Reshape, Permute
 from tensorflow.keras.layers import Conv1D, Conv2D, MaxPooling1D, MaxPooling2D
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.layers import GRU, LSTM
 from tensorflow.keras.layers import RandomTranslation
 from layers import RandomTimeMasking, RandomFrequencyMasking
 
-def CRNN2D(X_shape, nb_classes):
+def CRNN2D(X_shape, nb_classes, spec_arg=True):
     '''
     Model used for evaluation in paper. Inspired by K. Choi model in:
     https://github.com/keunwoochoi/music-auto_tagging-keras/blob/master/music_tagger_crnn.py
@@ -32,31 +32,34 @@ def CRNN2D(X_shape, nb_classes):
     time_axis = 2
     channel_axis = 3
 
-    #Data Augmentation Variables for LB Policy
-    W = 80
-    F = 27
-    mF = 1
-    T = 100
-    p = 1
-    mT = 1
-    num_time_channels = 911
-    num_freq_channels = 128
-    
-
     # Create sequential model and normalize along frequency axis
     model = Sequential()
+    
+    model.add(Input(shape=input_shape))
 
     # Add data augmentation
-    model.add(RandomTranslation((0,0),((0.0878),(0.9122)), fill_mode='wrap', input_shape=input_shape))
-    model.add(RandomFrequencyMasking(F, num_freq_channels))
-    model.add(RandomTimeMasking(T, num_time_channels))
+    if spec_arg:
+        #Data Augmentation Variables for LB Policy
+        W = 80
+        F = 27
+        mF = 1
+        T = 100
+        p = 1
+        mT = 1
+        num_time_channels = 911
+        num_freq_channels = 128
+        # add specarg if desired
+        model.add(RandomTranslation((0,0),((0.0878),(0.9122)), fill_mode='wrap'))
+        model.add(RandomFrequencyMasking(F, num_freq_channels))
+        model.add(RandomTimeMasking(T, num_time_channels))
 
-    model.add(BatchNormalization(axis=frequency_axis, input_shape=input_shape))
+    model.add(BatchNormalization(axis=frequency_axis))
 
     # First convolution layer specifies shape
     model.add(Conv2D(nb_filters[0], kernel_size=kernel_size, padding='same',
                      data_format="channels_last",
-                     input_shape=input_shape))
+                    #  input_shape=input_shape
+                     ))
     model.add(Activation(activation))
     model.add(BatchNormalization(axis=channel_axis))
     model.add(MaxPooling2D(pool_size=pool_size[0], strides=pool_size[0]))
@@ -83,9 +86,9 @@ def CRNN2D(X_shape, nb_classes):
     # recurrent layer
     model.add(GRU(32, return_sequences=True))
     model.add(GRU(32, return_sequences=False))
-    model.add(Dropout(0.3))
 
     # Output layer
+    model.add(Dropout(0.3))
     model.add(Dense(nb_classes))
     model.add(Activation("softmax"))
     return model
