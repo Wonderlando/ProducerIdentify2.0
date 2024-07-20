@@ -5,12 +5,14 @@ import os
 import datetime
 import json
 
+import tensorflow as tf
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard
 from tensorflow.keras.optimizers import Adam
 
 def train_model(load_checkpoint:bool = False, train = True,
                 save_le:bool = False, save_model:bool = True, save_training_history:bool = True, save_eval_metrics:bool =True,
                 slice_length:int = 911, lr:float = 0.001, nb_epochs:int = 5, batch_size:int = 32, random_seed:int = 42,
+                spec_arg:bool = True,
                 model_name = 'untitled'):
     
     ### creating and managing directories for results
@@ -44,8 +46,11 @@ def train_model(load_checkpoint:bool = False, train = True,
     X_train = X_train.reshape(X_train.shape + (1,))
     X_test = X_test.reshape(X_test.shape + (1,))
 
+    # set random seed for neural network calls
+    tf.random.set_seed(random_seed)
+
     # build the model
-    model = models.CRNN2D(X_train.shape, nb_classes=Y_train.shape[1])
+    model = models.CRNN2D(X_train.shape, nb_classes=Y_train.shape[1], spec_arg=spec_arg)
     model.compile(loss='categorical_crossentropy',
                   optimizer=Adam(learning_rate=lr),
                   metrics=['accuracy'])
@@ -63,7 +68,7 @@ def train_model(load_checkpoint:bool = False, train = True,
     verbose=1
     )
 
-    early_stopping_callback = EarlyStopping(patience = 2)
+    early_stopping_callback = EarlyStopping(patience = 3)
 
     if load_checkpoint:
         # load checkpoint if it exists

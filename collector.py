@@ -102,9 +102,9 @@ if __name__ == "__main__":
     record_songs = True
     fix_songs = False
 
-    producer_name = 'daft_punk'
+    producer_name = 'diplo'
     music_folder = 'music'
-    songs_in_album = 300
+    songs_in_album = 400
 
     song_length_tolerance = 45
 
@@ -117,7 +117,9 @@ if __name__ == "__main__":
 
 
         if os.path.isdir(producer_directory):
-            print(f'Producer directory found for {producer_name}')
+            is_sure = input(f'Producer directory found for {producer_name}. Are you sure you want to proceed? (y/n)')
+            if not is_sure == 'y':
+                exit()
         else:
             print(f'Producer directory not found. Creating new directory for {producer_name}')
             os.mkdir(producer_directory)
