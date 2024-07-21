@@ -3,13 +3,16 @@ import trainer
 if __name__ == '__main__':
 
     seeds = [5, 42, 101]
+    nb_epochs = 20
+    load_checkpoint = False
+
 
     for seed in seeds:
-        trainer.train_model(nb_epochs=10, load_checkpoint=False, 
-                            model_name=f'19_Jul_2024_no_spec_arg_test_seed_{seed}', random_seed=seed,
+        trainer.train_model(nb_epochs=nb_epochs, load_checkpoint=load_checkpoint, 
+                            model_name=f'20_Jul_2024_no_spec_arg_test_seed_{seed}', random_seed=seed,
                             train=True, spec_arg=False)
-        trainer.train_model(nb_epochs=10, load_checkpoint=True, 
-                            model_name=f'19_Jul_2024_spec_arg_test_seed_{seed}', random_seed=seed,
+        trainer.train_model(nb_epochs=nb_epochs, load_checkpoint=load_checkpoint, 
+                            model_name=f'20_Jul_2024_spec_arg_test_seed_{seed}', random_seed=seed,
                             train=True, spec_arg=True)
 
     # batch_sizes = [2, 4, 8]
