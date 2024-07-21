@@ -46,18 +46,21 @@ def load_dataset(song_folder_name='dataset', producer_folder='music'):
 
     return artist, spectrogram, song_name
 
-def load_dataset_song_split(random_state:int = 42,
-                            song_folder_name='dataset',
+def load_dataset_song_split(song_folder_name='dataset',
                             producer_folder='music',
                             test_split_size=0.2):
-    """Splits the dataset into testing and training subsets."""
+    """Splits the dataset into testing and training subsets.
+    
+    Always keep the random_state=42 for testing consistency purposes!!"""
+
+    _random_state = 42
 
     artist, spectrogram, song_name = load_dataset(song_folder_name=song_folder_name,
                            producer_folder=producer_folder)
     # train and test split
     X_train, X_test, Y_train, Y_test, S_train, S_test = train_test_split(
         spectrogram, artist, song_name, test_size=test_split_size, stratify=artist,
-        random_state = random_state)
+        random_state = _random_state)
     
     return X_train, X_test, \
             Y_train, Y_test, \
